@@ -1,8 +1,7 @@
-'use babel'
 // @flow
 
-import _ from 'lodash'
-import { cleanUpExpression } from './helpers.js'
+import R from 'ramda'
+import { cleanUpExpression } from './helpers'
 
 export type Token = {
   type: string, // TODO - make it an enum
@@ -29,7 +28,7 @@ function isFrolicExpression(code) {
   return code.startsWith('$')
 }
 
-function isRenderExpression (code) {
+function isRenderExpression (code) : boolean {
   return code.startsWith('render ')
     || code.startsWith('Html.beginnerProgram')
     || code.startsWith('beginnerProgram')
@@ -38,7 +37,14 @@ function isRenderExpression (code) {
     || code.startsWith('program')
 }
 
-function getType(code) {
+type ExpressionType
+    = 'frolicExpression'
+    | 'importStatement'
+    | 'renderExpression'
+    | 'assignment'
+    | 'expression'
+
+function getType(code) : ExpressionType {
   if (isFrolicExpression(code)) {
     return 'frolicExpression'
   } else if (isImportStatement(code)) {
@@ -54,19 +60,23 @@ function getType(code) {
   }
 }
 
-const commandType = _.memoize((command) => ({
+const commandType = R.memoize((command) => ({
   ...command,
   type: getType(command.value)
 }))
 
-export function tokenize(code: string) {
+export function tokenize(code: string) : Array<Token> {
+  if(R.trim(code) === '') {
+      return []
+  }
+
   return code.split('\n')
   .reduce((acc, line, index) => {
     if (cleanUpExpression(line)[0] === ' ' && index !== 0) {
       return acc.slice(0, acc.length - 1).concat({
         ...acc[acc.length - 1],
         newlines: acc[acc.length - 1].newlines + 1,
-        value: `${acc[acc.length - 1].value} ${_.trim(cleanUpExpression(line))}`
+        value: `${acc[acc.length - 1].value} ${R.trim(cleanUpExpression(line))}`
       })
     }
 
@@ -74,11 +84,11 @@ export function tokenize(code: string) {
   }, [])
   .map(commandType)
   .reduce((acc, command, index) => { // bunch up expressions
-    if (index !== 0 && command.type === 'expression' && _.last(acc).type === 'expression') {
+    if (index !== 0 && command.type === 'expression' && R.last(acc).type === 'expression') {
       return [
-        ..._.initial(acc), {
-          ..._.last(acc),
-          commands: _.last(acc).commands.concat(command)
+        ...R.init(acc), {
+          ...R.last(acc),
+          commands: R.last(acc).commands.concat(command)
         }
       ]
     }

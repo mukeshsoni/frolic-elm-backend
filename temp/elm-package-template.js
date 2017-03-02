@@ -1,5 +1,3 @@
-'use babel'
-
 const elmPackageTemplate = {
     "version": "1.0.0",
     "summary": "helpful summary of your project, less than 80 characters",
@@ -48,4 +46,4 @@ const elmPackageTemplate = {
     "elm-version": "0.18.0 <= v < 0.19.0"
 }
 
-module.exports = elmPackageTemplate
+export default elmPackageTemplate

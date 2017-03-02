@@ -3,7 +3,8 @@
 
 import _ from 'lodash'
 import crypto from 'crypto'
-import memoize from 'fast-memoize'
+import R from 'ramda'
+const memoize = R.memoize
 
 import type { Token } from './parser.js'
 

@@ -1,14 +1,9 @@
-'use babel'
 // @flow
 
-import { React } from 'react-for-atom'
-import Promise from 'bluebird'
-import Elm from 'react-elm-components'
-import _ from 'lodash'
-const ps = require('ps-node')
-const Rx = require('rxjs/Rx')
-const packageJsonTemplateFileContents = require('./temp/elm-package-template.js')
-const path = require('path')
+import R from 'ramda'
+import Task from 'fun-task'
+import packageJsonTemplateFileContents from './temp/elm-package-template.js'
+import path from 'path'
 const exec = require('child_process').exec
 const fs = require('fs')
 
@@ -17,15 +12,12 @@ import {
   createTokenHash,
   cleanUpExpression,
 } from './helpers'
-
-Promise.config({
-  cancellation: true
-})
-
 const basePath = path.resolve(__dirname)
+
 const tempFolderPath = `${basePath}/temp`
 const codePath = tempFolderPath
-const promisifiedExec = Promise.promisify(exec)
+const promisify = require('promisify-node')
+const promisifiedExec = promisify(exec)
 
 import {
   writeSourcesToElmPackageJson,
@@ -37,35 +29,6 @@ import {
 } from './fileWriters.js'
 
 const numLinesAddedToPlaygroundFile = 5
-function getFormattedError(error) {
-  const errorString = error.toString()
-  const correctedErrorString = _.drop(errorString.split('\n'))
-    .map((str) => {
-      if (str.match(/^\d+\|/)) {
-        const indexOfPipe = str.indexOf('|')
-        const lineNumber = str.split('|')[0]
-        const newLineNumber = lineNumber - numLinesAddedToPlaygroundFile
-        return newLineNumber + str.slice(indexOfPipe)
-      } else {
-        return str
-      }
-    })
-    .join('\n')
-
-  return (
-    <div
-      style={{
-        height: '100%',
-        background: '#D8000C',
-        color: 'white',
-        display: 'block',
-        clear: 'both'
-      }}
-    >
-      {correctedErrorString}
-    </div>
-  )
-}
 
 let lastOpenFilePath = ''
 
@@ -73,7 +36,7 @@ function inCache(token) {
   return Boolean(cachedSources[token.hash])
 }
 
-const notInCache = _.negate(inCache)
+const notInCache = R.negate(inCache)
 
 let elmMakePromises = Promise.resolve()
 
@@ -101,42 +64,6 @@ function handleCancel() {
   })
 }
 
-function resultToComponent(expressions, results) {
-  const elmMakeErrors = results.filter(r => r.status === 'rejected')
-  const errorIndices = results.map((r, i) => i).filter(i => results[i].status === 'rejected')
-  const sources = expressions
-                  .filter((a, i) => !errorIndices.includes(i))
-                  .map((expression, index) => getSource(module, expression, index))
-
-  const elmComponents = sources.map((source, index) => {
-    // only return elm component is source is not corrupted
-    // style={{display: 'flex', justifyContent: 'center'}}
-    if (source && source.embed) {
-      return (
-        <div
-          key={expressions[index].hash}
-          style={{
-            clear: 'both'
-          }}
-          >
-          <Elm key={expressions[index].hash} src={source} />
-        </div>
-      )
-    } else {
-      console.log('error in elm make', source)
-      return <span>{source}</span>
-    }
-  })
-
-  const elmErrorComponents = elmMakeErrors.map((elmMakeError) => getFormattedError(elmMakeError.e))
-
-  return subscriber.next({
-    output: elmComponents.concat(elmErrorComponents),
-    compiling: false,
-    error: elmMakeErrors.map(e => e.e.toString())
-  })
-}
-
 function compileElmFiles(expressions) {
   const allPromises = expressions.map((expression) => {
     const fileName = `F${expression.hash}`
@@ -153,7 +80,7 @@ export function compile(code: string = '', playgroundCode: string = '', openFile
 
   // get folder path from file path
   const openFileFolderPath = openFilePath
-    ? _.initial(openFilePath.split('/')).join('/')
+    ? R.init(openFilePath.split('/')).join('/')
     : null
 
   const tokens = tokenize(playgroundCode.trim())
@@ -191,7 +118,7 @@ export function compile(code: string = '', playgroundCode: string = '', openFile
 
 function onNewFileLoad(openFilePath: string) {
   const openFileFolderPath = openFilePath
-    ? _.initial(openFilePath.split('/')).join('/')
+    ? R.init(openFilePath.split('/')).join('/')
     : null
   updateFileSources(openFileFolderPath, lastOpenFilePath, packageJsonTemplateFileContents)
 }
@@ -218,7 +145,7 @@ function formatCode(code: string) {
   }
 
   return Promise.promisify(execFormat)()
-  // .then((formattedCode) => _.drop(formattedCode.split('\n'), 2).join('\n'))
+  // .then((formattedCode) => R.drop(formattedCode.split('\n'), 2).join('\n'))
 }
 
 let subscriber = { next: () => null, complete: () => null }
@@ -285,5 +212,5 @@ function getSource(module, expression, index): React$Element<any> {
     global.eval = previousEval // eslint-disable-line no-eval
   }
 
-  return global.module.exports[_.capitalize(fileName)]
+  return global.module.exports[R.capitalize(fileName)]
 }
