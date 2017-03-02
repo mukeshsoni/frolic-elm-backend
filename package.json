@@ -1,0 +1,16 @@
+{
+  "name": "frolic-elm-server",
+  "version": "0.0.1",
+  "description": "Server which receives elm code and sends back compiled javascript code",
+  "main": "index.js",
+  "repository": {
+    "url": "mukeshsoni/frolic-elm-backend",
+    "type": "git"
+  },
+  "author": "Mukesh Soni <mukeshsoni@gmail.com> (http://unstack.in/)",
+  "license": "MIT",
+  "dependencies": {
+    "ps-node": "^0.1.4",
+    "ramda": "^0.23.0"
+  }
+}
