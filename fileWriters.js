@@ -1,4 +1,3 @@
-'use babel'
 // @flow
 
 import _ from 'lodash'
@@ -6,6 +5,7 @@ import fs from 'fs'
 import jsonfile from 'jsonfile'
 import path from 'path'
 import Promise from 'bluebird'
+import Task from 'fun-task'
 
 import {
   cleanUpExpression,
@@ -73,14 +73,20 @@ export function writeSourcesToElmPackageJson(templateFileContents: ElmPackageJso
 /*
  * Update elm-package.json src property to include path from where the file is loaded
  */
-export function updateFileSources(openFilePath: string | null = tempFolderPath, lastOpenFilePath: string, packageJsonTemplateFileContents: ElmPackageJson) {
-  if ((openFilePath && lastOpenFilePath === openFilePath) || (!openFilePath && lastOpenFilePath === tempFolderPath)) {
-    return Promise.resolve(true)
-  } else {
-    lastOpenFilePath = openFilePath || tempFolderPath
-  }
+export function updateFileSources(
+  openFilePath: ?string = tempFolderPath,
+  lastOpenFilePath: string,
+  packageJsonTemplateFileContents: ElmPackageJson) {
+  return Task.create((onSuccess, onFailure) => {
+    if ((openFilePath && lastOpenFilePath === openFilePath)
+      || (!openFilePath && lastOpenFilePath === tempFolderPath)) {
+      return onSuccess(true)
+    } else {
+      lastOpenFilePath = openFilePath || tempFolderPath
+    }
 
-  return writeSourcesToElmPackageJson(packageJsonTemplateFileContents, openFilePath || tempFolderPath)
+    return writeSourcesToElmPackageJson(packageJsonTemplateFileContents, openFilePath || tempFolderPath)
+  })
 }
 
 export function writeCodeToFile(code: string) {

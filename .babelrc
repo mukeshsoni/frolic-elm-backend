@@ -1,0 +1,19 @@
+{
+  "plugins": [
+    ["transform-es2015-modules-commonjs"],
+    ["transform-flow-strip-types"],
+    ["transform-async-to-generator"],
+    ["transform-runtime", {
+      "polyfill": false,
+      "regenerator": true
+    }],
+    "transform-object-rest-spread"
+  ],
+  "presets": ["latest"],
+  "env": {
+    "production": {
+      "comments": false,
+      "minified": true
+    }
+  }
+}

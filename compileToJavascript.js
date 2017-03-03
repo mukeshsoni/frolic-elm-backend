@@ -32,18 +32,11 @@ const numLinesAddedToPlaygroundFile = 5
 
 let lastOpenFilePath = ''
 
-function inCache(token) {
+function inCache(token) : boolean {
   return Boolean(cachedSources[token.hash])
 }
 
 const notInCache = R.negate(inCache)
-
-let elmMakePromises = Promise.resolve()
-
-function reflect(promise){
-  return promise.then(function(v){ return {v:v, status: "resolved" }}
-                      , function(e){ return {e:e, status: "rejected" }});
-}
 
 function handleCancel() {
   ps.lookup({
@@ -64,22 +57,31 @@ function handleCancel() {
   })
 }
 
-function compileElmFiles(expressions) {
-  const allPromises = expressions.map((expression) => {
-    const fileName = `F${expression.hash}`
-    return promisifiedExec(`cd ${codePath} && elm-make --yes ${fileName}.elm --output=${fileName}.js`)
-  })
 
-  return allPromises
+function compileElmFile(expression) {
+  return Task.create((onSuccess, onFailure) => {
+    const fileName = `F${expression.hash}`
+    promisifiedExec(`cd ${codePath} && elm-make --yes ${fileName}.elm --output=${fileName}.js`)
+       .then(() => onSuccess())
+      .catch(e => onFailure(e))
+    return handleCancel
+  })
 }
 
+function compileElmFiles(expressions) {
+  return Task.parallel(expressions.map(compileElmFile))
+}
+
+var runningTask
+
 export function compile(code: string = '', playgroundCode: string = '', openFilePath: string) {
-  if(elmMakePromises && elmMakePromises.cancel) {
-      elmMakePromises.cancel()
+  if(runningTask && runningTask.cancel) {
+      runningTask.cancel()
   }
 
   // get folder path from file path
-  const openFileFolderPath = openFilePath
+  const openFileFolderPath
+    = openFilePath
     ? R.init(openFilePath.split('/')).join('/')
     : null
 
@@ -88,8 +90,6 @@ export function compile(code: string = '', playgroundCode: string = '', openFile
     ...token,
     hash: createTokenHash(openFilePath || '', token, code.trim())
   }))
-
-  subscriber.next({compiling: true})
 
   return updateFileSources(openFileFolderPath, lastOpenFilePath, packageJsonTemplateFileContents)
     .then(() => writeCodeToFile(code))
@@ -146,14 +146,6 @@ function formatCode(code: string) {
 
   return Promise.promisify(execFormat)()
   // .then((formattedCode) => R.drop(formattedCode.split('\n'), 2).join('\n'))
-}
-
-let subscriber = { next: () => null, complete: () => null }
-
-function getObservable() {
-  return Rx.Observable.create((o) => {
-    subscriber = o
-  })
 }
 
 function onCodeChange(code: string, playgroundCode: string, openFilePath: string) {
