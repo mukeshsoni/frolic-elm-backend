@@ -31,23 +31,46 @@ type ElmPackageJson = {
   "elm-version": string
 };
 
+function readSources(path) {
+  // TODO - fill implementation
+  return []
+}
+
+function packageJsonExists(path) {
+  const filesInFolderToCheck = fs.readdirSync(path)
+  return R.contains('elm-package.json', filesInFolderToCheck)
+}
+
+function findProbableSources(basePath, depth = 0) : Array<Sources> {
+    const maxDepth = 20
+    if(depth >= maxDepth) {
+      return []
+    }
+
+    if(packageJsonExists(basePath)) {
+      return readSources(basePath + '/elm-package.json')
+    } else if(basePath === '/') {
+      return []
+    } else {
+      return findProbableSources(oneUp(basePath), depth + 1)
+    }
+}
+
 export function writeSourcesToElmPackageJson(templateFileContents: ElmPackageJson, basePathForOpenFile: string) {
   const packageJsonFilePath = `${tempFolderPath}/elm-package.json`
 
   let packageJsonFileContents = {
     ...templateFileContents,
-    'source-directories': _.uniq(templateFileContents['source-directories'].concat([path.resolve(tempFolderPath), path.resolve(basePathForOpenFile)]))
+    'source-directories': R.uniq(templateFileContents['source-directories'].concat([path.resolve(tempFolderPath), path.resolve(basePathForOpenFile)]))
   }
 
   if (basePathForOpenFile !== path.resolve(tempFolderPath)) {
     let folderToCheck = basePathForOpenFile
-    let filesInFolderToCheck
     let depth = 0
     const maxDepth = 25
     while (true && depth < maxDepth) {
       depth += 1
-      filesInFolderToCheck = fs.readdirSync(folderToCheck)
-      if (_.includes(filesInFolderToCheck, 'elm-package.json')) {
+      if (packageJsonExists(folderToCheck)) {
         const tempPackageJsonContent = jsonfile.readFileSync(`${folderToCheck}/elm-package.json`)
         const sourceDirectories = tempPackageJsonContent['source-directories']
 
@@ -77,16 +100,14 @@ export function updateFileSources(
   openFilePath: ?string = tempFolderPath,
   lastOpenFilePath: string,
   packageJsonTemplateFileContents: ElmPackageJson) {
-  return Task.create((onSuccess, onFailure) => {
     if ((openFilePath && lastOpenFilePath === openFilePath)
       || (!openFilePath && lastOpenFilePath === tempFolderPath)) {
-      return onSuccess(true)
+      return Task.of(true)
     } else {
       lastOpenFilePath = openFilePath || tempFolderPath
     }
 
     return writeSourcesToElmPackageJson(packageJsonTemplateFileContents, openFilePath || tempFolderPath)
-  })
 }
 
 export function writeCodeToFile(code: string) {
