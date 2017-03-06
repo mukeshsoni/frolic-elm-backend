@@ -2634,6 +2634,10 @@ rimraf@^2.2.8, rimraf@^2.4.3, rimraf@^2.4.4:
   dependencies:
     glob "^7.0.5"
 
+rtrim:
+  version "1.0.0"
+  resolved "https://registry.yarnpkg.com/rtrim/-/rtrim-1.0.0.tgz#60fb47a18624d6c14ff282c91de08c6e5779e8d9"
+
 run-async@^0.1.0:
   version "0.1.0"
   resolved "https://registry.yarnpkg.com/run-async/-/run-async-0.1.0.tgz#c8ad4a5e110661e402a7d21b530e009f25f8e389"

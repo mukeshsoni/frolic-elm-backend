@@ -5,6 +5,7 @@ import fs from 'fs'
 import jsonfile from 'jsonfile'
 import path from 'path'
 import Task from 'fun-task'
+import rtrim from 'rtrim'
 
 import {
   cleanUpExpression,
@@ -31,9 +32,20 @@ type ElmPackageJson = {
   "elm-version": string
 };
 
-function readSources(path) {
-  // TODO - fill implementation
-  return []
+// TODO - should probably return a Maybe
+export function readSources(path) {
+  const pathToFile = `${path}/elm-package.json`
+  try {
+    const packageJsonContent = jsonfile.readFileSync(pathToFile)
+    if(!packageJsonContent['source-directories']) {
+      return []
+    }
+    return packageJsonContent['source-directories'].map( sourceDirectory => 
+      rtrim(`${path}/${sourceDirectory}`, '/.'))
+  } catch(e) {
+    console.log('error reading package json', e)
+    return []
+  }
 }
 
 function packageJsonExists(path) {
@@ -48,7 +60,7 @@ function findProbableSources(basePath, depth = 0) : Array<Sources> {
     }
 
     if(packageJsonExists(basePath)) {
-      return readSources(basePath + '/elm-package.json')
+      return readSources(basePath)
     } else if(basePath === '/') {
       return []
     } else {
@@ -63,33 +75,9 @@ export function writeSourcesToElmPackageJson(templateFileContents: ElmPackageJso
 
   let packageJsonFileContents = {
     ...templateFileContents,
-    'source-directories': R.uniq(templateFileContents['source-directories'].concat([path.resolve(tempFolderPath), path.resolve(basePathForOpenFile)]))
-  }
-
-  if (basePathForOpenFile !== path.resolve(tempFolderPath)) {
-    let folderToCheck = basePathForOpenFile
-    let depth = 0
-    const maxDepth = 25
-    while (true && depth < maxDepth) {
-      depth += 1
-      if (packageJsonExists(folderToCheck)) {
-        const tempPackageJsonContent = jsonfile.readFileSync(`${folderToCheck}/elm-package.json`)
-        const sourceDirectories = tempPackageJsonContent['source-directories']
-
-        packageJsonFileContents = {
-          ...packageJsonFileContents,
-          'source-directories': R.uniq(packageJsonFileContents['source-directories'].concat(trimEnd(`${folderToCheck}/${sourceDirectories}`, '/.')))
-        }
-        break
-      } else {
-        if (folderToCheck === '/') {
-          break
-        }
-
-        // something line '/Users' will result in ''. hence the ||
-        folderToCheck = R.init(folderToCheck.split('/')).join('/') || '/'
-      }
-    }
+    'source-directories': R.uniq(templateFileContents['source-directories']
+        .concat([path.resolve(tempFolderPath), path.resolve(basePathForOpenFile)])
+        .concat(findProbableSources(basePathForOpenFile)))
   }
 
   return writeJsonFile(packageJsonFilePath, packageJsonFileContents, { spaces: 4 })

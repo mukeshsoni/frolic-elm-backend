@@ -1,5 +1,6 @@
 import Task from 'fun-task'
 import chai from 'chai'
+import path from 'path'
 const expect = chai.expect
 
 import {
@@ -9,6 +10,7 @@ import {
   getGeneratedMainFileContent,
   getGeneratedFrolicFileContent,
   writeFilesForExpressions,
+  readSources
 } from '../fileWriters.js'
 
 describe('file writer helper functions', () => {
@@ -22,4 +24,15 @@ describe('file writer helper functions', () => {
     })
   })
 
+  it('should read source-directories property from specified elm json file', () => {
+    const sourceFilesInFolderA = [
+      path.resolve(`${__dirname}/fixtures/a/.`),
+      path.resolve(`${__dirname}/fixtures/a/b`),
+    ]
+
+    const pathToJsonFile = path.resolve(__dirname + '/fixtures/a')
+    console.log(sourceFilesInFolderA)
+    console.log(readSources(pathToJsonFile))
+    expect(readSources(pathToJsonFile)).to.eql(sourceFilesInFolderA)
+  })
 })
