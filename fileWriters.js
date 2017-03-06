@@ -1,19 +1,19 @@
 // @flow
 
-import _ from 'lodash'
+import R from 'ramda'
 import fs from 'fs'
 import jsonfile from 'jsonfile'
 import path from 'path'
-import Promise from 'bluebird'
 import Task from 'fun-task'
 
 import {
   cleanUpExpression,
 } from './helpers'
 
-const writeJsonFile = Promise.promisify(jsonfile.writeFile)
+import promisify from 'promisify-node'
+const writeJsonFile = promisify(jsonfile.writeFile)
 
-const writeFile = Promise.promisify(fs.writeFile)
+const writeFile = promisify(fs.writeFile)
 const basePath = path.resolve(__dirname)
 
 const tempFolderPath = `${basePath}/temp`
@@ -56,6 +56,8 @@ function findProbableSources(basePath, depth = 0) : Array<Sources> {
     }
 }
 
+const trimEnd = ( str ) => str.replace(/\s*$/,"")
+
 export function writeSourcesToElmPackageJson(templateFileContents: ElmPackageJson, basePathForOpenFile: string) {
   const packageJsonFilePath = `${tempFolderPath}/elm-package.json`
 
@@ -76,7 +78,7 @@ export function writeSourcesToElmPackageJson(templateFileContents: ElmPackageJso
 
         packageJsonFileContents = {
           ...packageJsonFileContents,
-          'source-directories': _.uniq(packageJsonFileContents['source-directories'].concat(_.trimEnd(`${folderToCheck}/${sourceDirectories}`, '/.')))
+          'source-directories': R.uniq(packageJsonFileContents['source-directories'].concat(trimEnd(`${folderToCheck}/${sourceDirectories}`, '/.')))
         }
         break
       } else {
@@ -85,7 +87,7 @@ export function writeSourcesToElmPackageJson(templateFileContents: ElmPackageJso
         }
 
         // something line '/Users' will result in ''. hence the ||
-        folderToCheck = _.initial(folderToCheck.split('/')).join('/') || '/'
+        folderToCheck = R.init(folderToCheck.split('/')).join('/') || '/'
       }
     }
   }
@@ -110,13 +112,14 @@ export function updateFileSources(
     return writeSourcesToElmPackageJson(packageJsonTemplateFileContents, openFilePath || tempFolderPath)
 }
 
+const words = R.split(' ')
 export function writeCodeToFile(code: string) {
   const moduleName = 'UserCode'
   let codeToWrite = code.trim()
 
   // if module declaration is there in the panel, don't add it again
   if (code.startsWith('module ')) {
-    const inlineModuleName = _.words(code)[1]
+    const inlineModuleName = words(code)[1]
     codeToWrite = code.replace(`module ${inlineModuleName}`, 'module UserCode')
   } else if (code.trim() === '') { // if code panel is empty, insert a random function
     codeToWrite = `module ${moduleName} exposing (..)
@@ -145,7 +148,7 @@ ${mainFileTemplateForComponents}
 ${statements}
 
 frolicSpecialUpdate model _ = model
-frolicSpecialView _ = ${_.trim(_.drop(expression.value.split(' ')).join(' '))}
+frolicSpecialView _ = ${R.trim(R.drop(1, expression.value.split(' ')).join(' '))}
 main =
     beginnerProgram { model = 1 , view = frolicSpecialView , update = frolicSpecialUpdate }
 `
@@ -174,7 +177,7 @@ import ${userModuleName} exposing (..)`
 ${mainFileTemplateForComponents}
 ${statements}
 main =
-    ${appProgram} ${_.drop(expression.value.split(' ')).join(' ')}`
+    ${appProgram} ${R.drop(1, expression.value.split(' ')).join(' ')}`
   } else {
     fileContent = `module F${expression.hash} exposing (..)
 import String
@@ -211,7 +214,7 @@ function getToStrings(expression: Token) {
     if (command.value.trim().length === 0) {
       return '"""\n"""'
     } else {
-      const newLines = _.times(command.newlines, _.constant('\n')).map(() => '"""\n"""').join(',')
+      const newLines = R.times(R.always('\n'), command.newlines).map(() => '"""\n"""').join(',')
       return `Basics.toString (${cleanUpExpression(command.value)}),${newLines}`
     }
   }).join(',')
