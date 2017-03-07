@@ -68,8 +68,6 @@ function findProbableSources(basePath, depth = 0) : Array<Sources> {
     }
 }
 
-const trimEnd = ( str ) => str.replace(/\s*$/,"")
-
 export function writeSourcesToElmPackageJson(templateFileContents: ElmPackageJson, basePathForOpenFile: string) {
   const packageJsonFilePath = `${tempFolderPath}/elm-package.json`
 
